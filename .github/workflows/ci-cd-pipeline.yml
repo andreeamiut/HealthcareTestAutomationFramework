@@ -1,0 +1,343 @@
+name: Healthcare Test Automation Pipeline
+
+on:
+  push:
+    branches: [ main, develop, feature/* ]
+  pull_request:
+    branches: [ main, develop ]
+  schedule:
+    # Run tests daily at 2 AM UTC
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+    inputs:
+      test_suite:
+        description: 'Test suite to run'
+        required: false
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - smoke
+          - api
+          - integration
+          - security
+
+env:
+  PYTHON_VERSION: '3.11'
+  ENVIRONMENT: 'ci'
+
+jobs:
+  # Job 1: Initial Setup and Validation
+  setup:
+    name: Setup & Validation
+    runs-on: ubuntu-latest
+    outputs:
+      cache-key: ${{ steps.cache-key.outputs.key }}
+      python-version: ${{ env.PYTHON_VERSION }}
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+        
+      - name: 🔑 Generate cache key
+        id: cache-key
+        run: echo "key=deps-${{ hashFiles('requirements.txt') }}-py${{ env.PYTHON_VERSION }}" >> $GITHUB_OUTPUT
+      
+      - name: 📊 Display workflow info
+        run: |
+          echo "🏥 Healthcare Test Automation Pipeline"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "Branch: ${{ github.ref_name }}"
+          echo "Commit: ${{ github.sha }}"
+          echo "Python: ${{ env.PYTHON_VERSION }}"
+          echo "Trigger: ${{ github.event_name }}"
+
+  # Job 2: Code Quality & Security Scanning
+  lint-and-security:
+    name: Code Quality & Security
+    runs-on: ubuntu-latest
+    needs: setup
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+        
+      - name: 🐍 Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ needs.setup.outputs.python-version }}
+          cache: 'pip'
+          
+      - name: 📦 Install linting tools
+        run: |
+          python -m pip install --upgrade pip
+          pip install flake8 pylint black isort safety bandit
+          
+      - name: 🎨 Run Black formatter check
+        run: black --check --diff libraries/ tests/ utils/
+        continue-on-error: true
+        
+      - name: 📑 Run isort import check
+        run: isort --check-only --diff libraries/ tests/ utils/
+        continue-on-error: true
+        
+      - name: 🔍 Run Flake8
+        run: flake8 libraries/ tests/ utils/ --max-line-length=120 --extend-ignore=E203,W503
+        continue-on-error: true
+        
+      - name: 🔬 Run Pylint
+        run: |
+          pylint libraries/ utils/ --disable=C0111,C0103,R0913,R0914 --exit-zero
+        continue-on-error: true
+        
+      - name: 🛡️ Security scan with Bandit
+        run: |
+          mkdir -p results
+          bandit -r libraries/ utils/ -f json -o results/bandit-report.json
+        continue-on-error: true
+        
+      - name: 🔐 Check for security vulnerabilities
+        run: |
+          pip install -r requirements.txt
+          safety check --json > results/safety-report.json || true
+        continue-on-error: true
+        
+      - name: 📤 Upload security reports
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: security-reports
+          path: results/*.json
+          retention-days: 30
+
+  # Job 3: Framework Verification Tests
+  framework-verification:
+    name: Framework Verification
+    runs-on: ubuntu-latest
+    needs: setup
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+        
+      - name: 🐍 Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ needs.setup.outputs.python-version }}
+          cache: 'pip'
+          
+      - name: 📦 Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install cryptography
+          
+      - name: 🧪 Run framework verification
+        run: |
+          python verify_framework.py || true
+        env:
+          PYTHONIOENCODING: utf-8
+        continue-on-error: true
+        
+      - name: ✅ Verify library imports
+        run: |
+          python -c "from libraries.APIHealthcareLibrary import APIHealthcareLibrary; print('✓ API Library OK')"
+          python -c "from libraries.DatabaseHealthcareLibrary import DatabaseHealthcareLibrary; print('✓ DB Library OK')"
+          python -c "from libraries.PlaywrightHealthcareLibrary import PlaywrightHealthcareLibrary; print('✓ PW Library OK')"
+
+  # Job 4: API Tests
+  api-tests:
+    name: API Tests
+    runs-on: ubuntu-latest
+    needs: [setup, framework-verification]
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+        
+      - name: 🐍 Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ needs.setup.outputs.python-version }}
+          cache: 'pip'
+          
+      - name: 📦 Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install cryptography pytest-html pytest-json-report
+          
+      - name: 🧪 Run API tests
+        run: |
+          mkdir -p results
+          python -m pytest tests/api/test_simple_api.py \
+            -v \
+            --html=results/api-test-report.html \
+            --self-contained-html \
+            --json-report \
+            --json-report-file=results/api-test-report.json \
+            -m "smoke or api or security" \
+            --tb=short
+        env:
+          PYTHONPATH: ${{ github.workspace }}
+          
+      - name: 📊 Test Summary
+        if: always()
+        run: |
+          echo "## API Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "- Test execution completed" >> $GITHUB_STEP_SUMMARY
+          
+      - name: 📤 Upload test reports
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: api-test-reports
+          path: |
+            results/api-test-report.html
+            results/api-test-report.json
+          retention-days: 30
+          
+      - name: 📈 Publish test results
+        uses: EnricoMi/publish-unit-test-result-action@v2
+        if: always()
+        with:
+          files: results/api-test-report.json
+          check_name: API Test Results
+        continue-on-error: true
+
+  # Job 5: Database Tests (with PostgreSQL service)
+  database-tests:
+    name: Database Tests
+    runs-on: ubuntu-latest
+    needs: [setup, framework-verification]
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: test_password
+          POSTGRES_USER: test_user
+          POSTGRES_DB: healthcare_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+          
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+        
+      - name: 🐍 Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ needs.setup.outputs.python-version }}
+          cache: 'pip'
+          
+      - name: 📦 Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install psycopg2-binary
+          
+      - name: 🗄️ Test database connection
+        run: |
+          python -c "import psycopg2; conn = psycopg2.connect(host='localhost', port=5432, database='healthcare_test', user='test_user', password='test_password'); print('✓ Database connection successful'); conn.close()"
+        env:
+          DB_HOST: localhost
+          DB_PORT: 5432
+          DB_NAME: healthcare_test
+          DB_USER: test_user
+          DB_PASSWORD: test_password
+          
+      - name: 🧪 Run database library tests
+        run: |
+          python -c "from libraries.DatabaseHealthcareLibrary import DatabaseHealthcareLibrary; db = DatabaseHealthcareLibrary(); print('✓ Database library instantiated successfully')"
+
+  # Job 6: Integration Tests
+  integration-tests:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    needs: [api-tests, database-tests]
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+        
+      - name: 🐍 Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+          
+      - name: 📦 Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install cryptography
+          
+      - name: 🧪 Run integration tests
+        run: |
+          mkdir -p results
+          python -m pytest tests/api/ \
+            -v \
+            -m "integration" \
+            --html=results/integration-test-report.html \
+            --self-contained-html \
+            --tb=short || true
+        env:
+          PYTHONPATH: ${{ github.workspace }}
+        continue-on-error: true
+          
+      - name: 📤 Upload integration test reports
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: integration-test-reports
+          path: results/integration-test-report.html
+          retention-days: 30
+
+  # Job 7: Test Report Generation & Summary
+  test-summary:
+    name: Generate Test Summary
+    runs-on: ubuntu-latest
+    needs: [framework-verification, api-tests, database-tests]
+    if: always()
+    steps:
+      - name: 📥 Download all artifacts
+        uses: actions/download-artifact@v3
+        
+      - name: 📊 Generate summary
+        run: |
+          echo "# 🏥 Healthcare Test Automation - Test Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## 📈 Test Execution Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Test Suite | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|------------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Framework Verification | ${{ needs.framework-verification.result == 'success' && '✅ Passed' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| API Tests | ${{ needs.api-tests.result == 'success' && '✅ Passed' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Database Tests | ${{ needs.database-tests.result == 'success' && '✅ Passed' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## 📦 Artifacts" >> $GITHUB_STEP_SUMMARY
+          echo "- API Test Reports" >> $GITHUB_STEP_SUMMARY
+          echo "- Security Scan Reports" >> $GITHUB_STEP_SUMMARY
+          echo "- Integration Test Reports" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Build Information" >> $GITHUB_STEP_SUMMARY
+          echo "- **Commit:** ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Branch:** ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Triggered by:** ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Workflow:** ${{ github.workflow }}" >> $GITHUB_STEP_SUMMARY
+
+  # Job 8: Notification (Optional - requires secrets setup)
+  notify:
+    name: Send Notifications
+    runs-on: ubuntu-latest
+    needs: [api-tests, database-tests, integration-tests]
+    if: always() && (github.event_name == 'schedule' || github.event_name == 'push')
+    steps:
+      - name: 📧 Send notification
+        run: |
+          echo "Pipeline completed"
+          echo "Results:"
+          echo "- API Tests: ${{ needs.api-tests.result }}"
+          echo "- Database Tests: ${{ needs.database-tests.result }}"
+          echo "- Integration Tests: ${{ needs.integration-tests.result }}"

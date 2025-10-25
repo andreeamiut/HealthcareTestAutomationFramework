@@ -1,0 +1,47 @@
+# Core Testing Frameworks
+robotframework==6.1.1
+robotframework-browser>=17.0.0
+robotframework-databaselibrary==1.2.4
+robotframework-requests==0.9.7
+robotframework-jsonlibrary==0.5
+robotframework-faker==5.0.0
+
+# Playwright and Web Testing
+playwright>=1.40.0
+selenium==4.15.2
+
+# Database Drivers
+psycopg2-binary==2.9.8
+pymysql==1.1.0
+# pyodbc==5.0.1  # Skip if ODBC drivers not installed
+
+# API Testing
+requests==2.31.0
+jsonschema==4.20.0
+
+# Data Handling
+# pandas==2.1.4  # Requires C++ compiler on Windows - skip for now
+openpyxl==3.1.2
+pyyaml==6.0.1
+faker==20.1.0
+
+# Reporting and Logging
+allure-robotframework==2.13.2
+# robotframework-reportportal==5.4.1  # Version not available - skip for now
+robotframework-pabot==2.16.0
+
+# Utilities
+python-dotenv==1.0.0
+cryptography>=41.0.0
+pillow>=10.0.0
+jinja2==3.1.2
+
+# Testing Utilities
+pytest==7.4.3
+pytest-html==4.1.1
+pytest-xdist==3.5.0
+
+# Development Tools
+black==23.11.0
+flake8==6.1.0
+pre-commit==3.6.0

@@ -1,0 +1,57 @@
+[
+  {
+    "appointment_id": "APT_TEST_001",
+    "patient_id": "PAT_TEST_001",
+    "provider_id": "PRV001",
+    "appointment_type": "ROUTINE_CHECKUP",
+    "appointment_date": "2024-01-15",
+    "appointment_time": "09:00:00",
+    "duration_minutes": 30,
+    "status": "SCHEDULED",
+    "notes": "Annual physical examination"
+  },
+  {
+    "appointment_id": "APT_TEST_002",
+    "patient_id": "PAT_TEST_002",
+    "provider_id": "PRV002",
+    "appointment_type": "CONSULTATION",
+    "appointment_date": "2024-01-15",
+    "appointment_time": "10:30:00",
+    "duration_minutes": 45,
+    "status": "CONFIRMED",
+    "notes": "Cardiology consultation for chest pain"
+  },
+  {
+    "appointment_id": "APT_TEST_003",
+    "patient_id": "PAT_TEST_003",
+    "provider_id": "PRV001",
+    "appointment_type": "FOLLOW_UP",
+    "appointment_date": "2024-01-16",
+    "appointment_time": "14:00:00",
+    "duration_minutes": 30,
+    "status": "SCHEDULED",
+    "notes": "Follow-up for diabetes management"
+  },
+  {
+    "appointment_id": "APT_TEST_004",
+    "patient_id": "PAT_TEST_004",
+    "provider_id": "PRV003",
+    "appointment_type": "ROUTINE_CHECKUP",
+    "appointment_date": "2024-01-17",
+    "appointment_time": "11:00:00",
+    "duration_minutes": 30,
+    "status": "SCHEDULED",
+    "notes": "Pediatric wellness visit"
+  },
+  {
+    "appointment_id": "APT_TEST_005",
+    "patient_id": "PAT_TEST_005",
+    "provider_id": "PRV004",
+    "appointment_type": "CONSULTATION",
+    "appointment_date": "2024-01-18",
+    "appointment_time": "15:30:00",
+    "duration_minutes": 60,
+    "status": "SCHEDULED",
+    "notes": "Mental health evaluation"
+  }
+]
