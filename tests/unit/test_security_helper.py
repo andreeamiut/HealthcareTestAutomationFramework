@@ -40,32 +40,26 @@ class TestSecurityHelper:
 
     def test_hash_password(self):
         """Test password hashing"""
-        try:
-            password = "TestPassword123!"
-            hashed = self.security.hash_password(password)
+        password = "TestPassword123!"
+        hashed = self.security.hash_password(password)
 
-            # Check hash is not the same as original
-            assert hashed != password
-            assert len(hashed) > 0
+        # Check hash is not the same as original
+        assert hashed != password
+        assert len(hashed) > 0
 
-            # Check hash format (assuming bcrypt format)
-            assert hashed.startswith('$2b$') or hashed.startswith('$2a$')
-        except ImportError:
-            pytest.skip("bcrypt not available")
+        # Check hash format (assuming bcrypt format)
+        assert hashed.startswith('$2b$') or hashed.startswith('$2a$')
 
     def test_verify_password(self):
         """Test password verification"""
-        try:
-            password = "TestPassword123!"
-            hashed = self.security.hash_password(password)
+        password = "TestPassword123!"
+        hashed = self.security.hash_password(password)
 
-            # Should verify correctly
-            assert self.security.verify_password(password, hashed)
+        # Should verify correctly
+        assert self.security.verify_password(password, hashed)
 
-            # Should fail with wrong password
-            assert not self.security.verify_password("WrongPassword", hashed)
-        except ImportError:
-            pytest.skip("bcrypt not available")
+        # Should fail with wrong password
+        assert not self.security.verify_password("WrongPassword", hashed)
 
     def test_generate_api_key(self):
         """Test API key generation"""
@@ -80,40 +74,34 @@ class TestSecurityHelper:
 
     def test_generate_jwt_token(self):
         """Test JWT token generation"""
-        try:
-            payload = {"user_id": "test_user", "role": "admin"}
-            secret = "test_secret_key"
+        payload = {"user_id": "test_user", "role": "admin"}
+        secret = "test_secret_key"
 
-            token = self.security.generate_jwt_token(payload, secret)
+        token = self.security.generate_jwt_token(payload, secret)
 
-            # JWT tokens have 3 parts separated by dots
-            parts = token.split('.')
-            assert len(parts) == 3
+        # JWT tokens have 3 parts separated by dots
+        parts = token.split('.')
+        assert len(parts) == 3
 
-            # Each part should be base64url encoded
-            for part in parts:
-                assert re.match(r'^[A-Za-z0-9_-]+$', part)
-        except ImportError:
-            pytest.skip("PyJWT not available")
+        # Each part should be base64url encoded
+        for part in parts:
+            assert re.match(r'^[A-Za-z0-9_-]+$', part)
 
     def test_verify_jwt_token(self):
         """Test JWT token verification"""
-        try:
-            payload = {"user_id": "test_user", "role": "admin"}
-            secret = "test_secret_key"
+        payload = {"user_id": "test_user", "role": "admin"}
+        secret = "test_secret_key"
 
-            token = self.security.generate_jwt_token(payload, secret)
+        token = self.security.generate_jwt_token(payload, secret)
 
-            # Should verify correctly
-            decoded = self.security.verify_jwt_token(token, secret)
-            assert decoded["user_id"] == "test_user"
-            assert decoded["role"] == "admin"
+        # Should verify correctly
+        decoded = self.security.verify_jwt_token(token, secret)
+        assert decoded["user_id"] == "test_user"
+        assert decoded["role"] == "admin"
 
-            # Should fail with wrong secret
-            with pytest.raises(Exception):
-                self.security.verify_jwt_token(token, "wrong_secret")
-        except ImportError:
-            pytest.skip("PyJWT not available")
+        # Should fail with wrong secret
+        with pytest.raises(Exception):
+            self.security.verify_jwt_token(token, "wrong_secret")
 
     def test_encrypt_decrypt_data(self):
         """Test data encryption and decryption"""
