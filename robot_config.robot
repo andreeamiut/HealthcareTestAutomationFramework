@@ -50,6 +50,8 @@ Suite Setup
     Log    Starting test suite: ${SUITE NAME}
     Create Directory    ${RESULTS_DIR}/screenshots
     Create Directory    ${RESULTS_DIR}/logs
+    ${current_datetime}=    Get Current Date    result_format=%Y-%m-%d %H:%M:%S
+    Set Global Variable    ${CURRENT_DATETIME}    ${current_datetime}
 
 Suite Teardown
     [Documentation]    Common teardown for test suites

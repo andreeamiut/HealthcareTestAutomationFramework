@@ -57,7 +57,7 @@ class HealthcareTestRunner:
     
     def run_api_tests(self, environment="dev", parallel=False):
         """Run API tests with pytest"""
-        print("🌐 Running API tests...")
+        print("Running API tests...")
         
         cmd = ["python", "-m", "pytest", TESTS_API_DIR, "-v"]
         
@@ -78,7 +78,7 @@ class HealthcareTestRunner:
     def run_ui_tests(self, environment="dev", browser="chromium", headless=True, 
                      parallel=False, tags=None):
         """Run UI tests with Robot Framework"""
-        print("🖥️ Running UI tests...")
+        print("Running UI tests...")
         
         cmd = ["python", "-m", "robot"]
         

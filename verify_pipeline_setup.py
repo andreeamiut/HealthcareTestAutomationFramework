@@ -29,127 +29,60 @@ def check_file_content(filepath, search_text, description):
         return False
 
 
-def main():
-    """Run pipeline verification checklist"""
-    print("=" * 70)
-    print("🏥 Healthcare Test Automation - Pipeline Setup Verification")
-    print("=" * 70)
-    print()
-    
-    checks_passed = 0
-    total_checks = 0
-    
-    # Check 1: Pipeline file exists
+def verify_pipeline_files():
+    """Verify pipeline files exist"""
     print("📋 STEP 1: Verifying Pipeline Files")
     print("-" * 70)
-    total_checks += 1
-    if check_file_exists(
-        ".github/workflows/ci-cd-pipeline.yml",
-        "Main CI/CD pipeline file"
-    ):
-        checks_passed += 1
     
-    total_checks += 1
-    if check_file_exists(
-        ".github/workflows/README.md",
-        "Pipeline documentation"
-    ):
-        checks_passed += 1
+    files = [
+        (".github/workflows/ci-cd-pipeline.yml", "Main CI/CD pipeline file"),
+        (".github/workflows/README.md", "Pipeline documentation"),
+        ("GITHUB_PIPELINE_SETUP.md", "Setup guide"),
+    ]
     
-    total_checks += 1
-    if check_file_exists(
-        "GITHUB_PIPELINE_SETUP.md",
-        "Setup guide"
-    ):
-        checks_passed += 1
-    
+    passed = sum(1 for filepath, desc in files if check_file_exists(filepath, desc))
     print()
-    
-    # Check 2: Pipeline configuration
+    return passed, len(files)
+
+
+def verify_pipeline_configuration():
+    """Verify pipeline configuration"""
     print("📋 STEP 2: Verifying Pipeline Configuration")
     print("-" * 70)
     
     pipeline_file = ".github/workflows/ci-cd-pipeline.yml"
+    checks = [
+        ("name: Healthcare Test Automation Pipeline", "Pipeline name configured"),
+        ("workflow_dispatch:", "Manual trigger enabled"),
+        ("test_suite:", "Test suite selection configured"),
+        ("lint-and-security:", "Code quality job configured"),
+        ("api-tests:", "API tests job configured"),
+        ("database-tests:", "Database tests job configured"),
+        ("postgres:15", "PostgreSQL service configured"),
+    ]
     
-    total_checks += 1
-    if check_file_content(
-        pipeline_file,
-        "name: Healthcare Test Automation Pipeline",
-        "Pipeline name configured"
-    ):
-        checks_passed += 1
-    
-    total_checks += 1
-    if check_file_content(
-        pipeline_file,
-        "workflow_dispatch:",
-        "Manual trigger enabled"
-    ):
-        checks_passed += 1
-    
-    total_checks += 1
-    if check_file_content(
-        pipeline_file,
-        "test_suite:",
-        "Test suite selection configured"
-    ):
-        checks_passed += 1
-    
-    total_checks += 1
-    if check_file_content(
-        pipeline_file,
-        "lint-and-security:",
-        "Code quality job configured"
-    ):
-        checks_passed += 1
-    
-    total_checks += 1
-    if check_file_content(
-        pipeline_file,
-        "api-tests:",
-        "API tests job configured"
-    ):
-        checks_passed += 1
-    
-    total_checks += 1
-    if check_file_content(
-        pipeline_file,
-        "database-tests:",
-        "Database tests job configured"
-    ):
-        checks_passed += 1
-    
-    total_checks += 1
-    if check_file_content(
-        pipeline_file,
-        "postgres:15",
-        "PostgreSQL service configured"
-    ):
-        checks_passed += 1
-    
+    passed = sum(1 for text, desc in checks if check_file_content(pipeline_file, text, desc))
     print()
-    
-    # Check 3: Test files
+    return passed, len(checks)
+
+
+def verify_test_files():
+    """Verify test files exist"""
     print("📋 STEP 3: Verifying Test Files")
     print("-" * 70)
     
-    total_checks += 1
-    if check_file_exists(
-        "tests/api/test_simple_api.py",
-        "API test file"
-    ):
-        checks_passed += 1
+    files = [
+        ("tests/api/test_simple_api.py", "API test file"),
+        ("verify_framework.py", "Framework verification script"),
+    ]
     
-    total_checks += 1
-    if check_file_exists(
-        "verify_framework.py",
-        "Framework verification script"
-    ):
-        checks_passed += 1
-    
+    passed = sum(1 for filepath, desc in files if check_file_exists(filepath, desc))
     print()
-    
-    # Check 4: Libraries
+    return passed, len(files)
+
+
+def verify_libraries():
+    """Verify custom libraries exist"""
     print("📋 STEP 4: Verifying Custom Libraries")
     print("-" * 70)
     
@@ -159,25 +92,22 @@ def main():
         ("libraries/PlaywrightHealthcareLibrary.py", "Playwright Healthcare Library"),
     ]
     
-    for filepath, description in libraries:
-        total_checks += 1
-        if check_file_exists(filepath, description):
-            checks_passed += 1
-    
+    passed = sum(1 for filepath, desc in libraries if check_file_exists(filepath, desc))
     print()
-    
-    # Check 5: Dependencies
+    return passed, len(libraries)
+
+
+def verify_dependencies():
+    """Verify dependencies"""
     print("📋 STEP 5: Verifying Dependencies")
     print("-" * 70)
     
-    total_checks += 1
-    if check_file_exists(
-        "requirements.txt",
-        "Requirements file"
-    ):
-        checks_passed += 1
+    passed = 0
+    total = 1
+    
+    if check_file_exists("requirements.txt", "Requirements file"):
+        passed += 1
         
-        # Check for key packages
         required_packages = [
             ("robotframework", "Robot Framework"),
             ("playwright", "Playwright"),
@@ -185,14 +115,16 @@ def main():
             ("requests", "requests"),
         ]
         
-        for package, name in required_packages:
-            total_checks += 1
-            if check_file_content("requirements.txt", package, f"{name} in requirements"):
-                checks_passed += 1
+        total += len(required_packages)
+        passed += sum(1 for pkg, name in required_packages 
+                     if check_file_content("requirements.txt", pkg, f"{name} in requirements"))
     
     print()
-    
-    # Final summary
+    return passed, total
+
+
+def print_summary(checks_passed, total_checks):
+    """Print verification summary"""
     print("=" * 70)
     print("📊 VERIFICATION SUMMARY")
     print("=" * 70)
@@ -219,6 +151,40 @@ def main():
         print("- Check file paths are correct")
         print("- Verify YAML syntax in pipeline file")
         return False
+
+
+def main():
+    """Run pipeline verification checklist"""
+    print("=" * 70)
+    print("🏥 Healthcare Test Automation - Pipeline Setup Verification")
+    print("=" * 70)
+    print()
+    
+    checks_passed = 0
+    total_checks = 0
+    
+    # Run all verification steps
+    passed, total = verify_pipeline_files()
+    checks_passed += passed
+    total_checks += total
+    
+    passed, total = verify_pipeline_configuration()
+    checks_passed += passed
+    total_checks += total
+    
+    passed, total = verify_test_files()
+    checks_passed += passed
+    total_checks += total
+    
+    passed, total = verify_libraries()
+    checks_passed += passed
+    total_checks += total
+    
+    passed, total = verify_dependencies()
+    checks_passed += passed
+    total_checks += total
+    
+    return print_summary(checks_passed, total_checks)
 
 
 if __name__ == '__main__':
