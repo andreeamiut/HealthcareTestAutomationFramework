@@ -194,30 +194,153 @@ class TestDataManager:
 
 class SecurityHelper:
     """Security utilities for healthcare data"""
-    
+
     def __init__(self, encryption_key: str = None):
         if encryption_key:
             self.cipher = Fernet(encryption_key.encode())
         else:
             # Generate a key for the session
             self.cipher = Fernet(Fernet.generate_key())
-    
+
+    def generate_secure_password(self, length: int = 12) -> str:
+        """Generate a secure password with required complexity"""
+        import secrets
+        import string
+
+        if length < 8:
+            length = 8
+
+        # Define character sets
+        lowercase = string.ascii_lowercase
+        uppercase = string.ascii_uppercase
+        digits = string.digits
+        special = '!@#$%^&*'
+
+        # Ensure at least one character from each set
+        password = [
+            secrets.choice(lowercase),
+            secrets.choice(uppercase),
+            secrets.choice(digits),
+            secrets.choice(special)
+        ]
+
+        # Fill the rest randomly
+        all_chars = lowercase + uppercase + digits + special
+        password.extend(secrets.choice(all_chars) for _ in range(length - 4))
+
+        # Shuffle the password
+        secrets.SystemRandom().shuffle(password)
+        return ''.join(password)
+
+    def hash_password(self, password: str) -> str:
+        """Hash a password using bcrypt"""
+        import bcrypt
+        salt = bcrypt.gensalt()
+        return bcrypt.hashpw(password.encode(), salt).decode()
+
+    def verify_password(self, password: str, hashed: str) -> bool:
+        """Verify a password against its hash"""
+        import bcrypt
+        return bcrypt.checkpw(password.encode(), hashed.encode())
+
+    def generate_api_key(self) -> str:
+        """Generate a secure API key"""
+        import secrets
+        import base64
+
+        # Generate 32 random bytes and encode as base64
+        random_bytes = secrets.token_bytes(32)
+        return base64.urlsafe_b64encode(random_bytes).decode().rstrip('=')
+
+    def generate_jwt_token(self, payload: Dict[str, Any], secret: str) -> str:
+        """Generate a JWT token"""
+        import jwt
+        import datetime
+
+        # Add expiration time
+        payload['exp'] = datetime.datetime.utcnow() + datetime.timedelta(hours=1)
+        payload['iat'] = datetime.datetime.utcnow()
+
+        return jwt.encode(payload, secret, algorithm='HS256')
+
+    def verify_jwt_token(self, token: str, secret: str) -> Dict[str, Any]:
+        """Verify and decode a JWT token"""
+        import jwt
+
+        return jwt.decode(token, secret, algorithms=['HS256'])
+
+    def encrypt_data(self, data: str, key: str = None) -> str:
+        """Encrypt data using Fernet"""
+        if key:
+            cipher = Fernet(key.encode())
+        else:
+            cipher = self.cipher
+        return cipher.encrypt(data.encode()).decode()
+
+    def decrypt_data(self, encrypted_data: str, key: str = None) -> str:
+        """Decrypt data using Fernet"""
+        if key:
+            cipher = Fernet(key.encode())
+        else:
+            cipher = self.cipher
+        return cipher.decrypt(encrypted_data.encode()).decode()
+
+    def generate_encryption_key(self) -> str:
+        """Generate a new encryption key"""
+        return Fernet.generate_key().decode()
+
+    def sanitize_input(self, input_str: str) -> str:
+        """Sanitize user input to prevent injection attacks"""
+        import re
+        # Remove potentially dangerous patterns
+        sanitized = re.sub(r'<[^>]*>', '', input_str)  # Remove HTML tags
+        sanitized = re.sub(r'(\b(union|select|insert|delete|update|drop|create|alter)\b)', '', sanitized, flags=re.IGNORECASE)
+        sanitized = re.sub(r'(--|#|/\*|\*/)', '', sanitized)  # Remove SQL comments
+        return sanitized.strip()
+
+    def validate_email(self, email: str) -> bool:
+        """Validate email format"""
+        import re
+        pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+        return bool(re.match(pattern, email))
+
+    def validate_phone_number(self, phone: str) -> bool:
+        """Validate phone number format"""
+        import re
+        # Allow various phone number formats
+        pattern = r'^[\+]?[1-9][\d]{0,15}$|^[\(]?[\d]{3}[\)]?[\s-]?[\d]{3}[\s-]?[\d]{4}$'
+        return bool(re.match(pattern, phone.replace(' ', '').replace('-', '').replace('(', '').replace(')', '')))
+
+    def generate_otp(self) -> str:
+        """Generate a 6-digit OTP"""
+        import secrets
+        return ''.join(secrets.choice('0123456789') for _ in range(6))
+
+    def verify_otp(self, otp: str, expected_otp: str, timestamp: float = None) -> bool:
+        """Verify OTP with optional expiration check"""
+        if timestamp:
+            import time
+            # OTP expires after 5 minutes
+            if time.time() - timestamp > 300:
+                return False
+        return otp == expected_otp
+
     def encrypt_sensitive_data(self, data: str) -> str:
         """Encrypt sensitive healthcare data"""
         return self.cipher.encrypt(data.encode()).decode()
-    
+
     def decrypt_sensitive_data(self, encrypted_data: str) -> str:
         """Decrypt sensitive healthcare data"""
         return self.cipher.decrypt(encrypted_data.encode()).decode()
-    
+
     def mask_pii(self, data: Dict[str, Any], fields_to_mask: List[str] = None) -> Dict[str, Any]:
         """Mask PII fields in data for logging"""
         if fields_to_mask is None:
             fields_to_mask = [
-                'social_security_number', 'ssn', 'phone_number', 
+                'social_security_number', 'ssn', 'phone_number',
                 'email', 'address_line1', 'address_line2'
             ]
-        
+
         masked_data = data.copy()
         for field in fields_to_mask:
             if field in masked_data:
@@ -226,7 +349,7 @@ class SecurityHelper:
                     masked_data[field] = '*' * (len(value) - 4) + value[-4:]
                 else:
                     masked_data[field] = '*' * len(value)
-        
+
         return masked_data
 
 
